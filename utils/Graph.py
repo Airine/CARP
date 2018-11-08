@@ -1,7 +1,7 @@
 from collections import defaultdict, namedtuple
 from utils.GraphDrawer import draw_graph
 import numpy as np
-Edge = namedtuple('Edge', 'weight, demand, distance')
+Edge = namedtuple('Edge', 'weight, demand')
 
 Inf = np.Inf
 
@@ -14,6 +14,7 @@ class Graph(object):
 		self._directed = directed
 		self.node_number = int(CARP_data.specification.get('VERTICES'))
 		self.edge_dict = dict()
+		self.distance_array = np.full((self.node_number+1, self.node_number+1), Inf)
 		self.connections = list()
 		self.generator(CARP_data)
 
@@ -23,7 +24,9 @@ class Graph(object):
 		for i in CARP_data.data:
 			tempt = tuple(i[0:2])
 			self.connections.append(tempt)
-			self.edge_dict[tempt] = Edge(i[2], i[3], i[2])
+			self.edge_dict[tempt] = Edge(i[2], i[3])
+			self.distance_array[tempt] = i[2]
+			self.distance_array[tempt[1], tempt[0]] = i[2]
 		self.add_connections()
 
 	def add_connections(self):
@@ -64,41 +67,23 @@ class Graph(object):
 		tempt = (node1, node2) if node1 < node2 else (node2, node1)
 		return getattr(self.edge_dict[tempt], 'weight')
 
-	def set_distance(self, node1, node2, dis):
-		""" Set the distance between two nodes """
-
-		tempt = (node1, node2) if node1 < node2 else (node2, node1)
-		is_edge = self.edge_dict.keys().__contains__(tempt)
-		temp_demand = 0
-		temp_weight = 0
-		if is_edge:
-			temp_weight = getattr(self.edge_dict[tempt], 'weight')
-			temp_demand = getattr(self.edge_dict[tempt], 'demand')
-		self.edge_dict[tempt] = Edge(temp_weight, temp_demand, dis)
-
-	def get_distance(self, node1, node2):
-		""" Get the distance between two nodes """
-
-		if node1 == node2:
-			return 0
-		tempt = (node1, node2) if node1 < node2 else (node2, node1)
-		if not self.edge_dict.keys().__contains__(tempt):
-			return Inf
-		return getattr(self.edge_dict[tempt], 'distance')
-
 	def get_distances(self, node):
 		distances_list = list()
 		for dest in self.graph:
-			distances_list.append('{} -> {}\t: {}'.format(node, dest, self.get_distance(node, dest)))
+			distances_list.append('{} -> {}\t: {}'.format(node, dest, self.distance_array[node, dest]))
 		return distances_list
 
 	def floyd(self):
 		for i in self.graph:
 			for j in self.graph:
 				for k in self.graph:
-					tempt = self.get_distance(i, k) + self.get_distance(k, j)
-					if self.get_distance(i, j) > tempt:
-						self.set_distance(i, j, tempt)
+					# tempt = self.get_distance(i, k) + self.get_distance(k, j)
+					tempt = self.distance_array[i, k] + self.distance_array[k, j]
+					# if self.get_distance(i, j) > tempt:
+					if self.distance_array[i, j] > tempt:
+						# self.set_distance(i, j, tempt)
+						self.distance_array[i, j] = tempt
+						self.distance_array[j, i] = tempt
 
 	@staticmethod
 	def draw(CARP_data):
@@ -109,4 +94,5 @@ class Graph(object):
 
 	def __str__(self):
 		return '{}({})'.format(self.__class__.__name__, dict(self.graph))\
-		       + '\n{}({})'.format('Total', dict(self.edge_dict))
+		       + '\n{}({})'.format('Total', dict(self.edge_dict))\
+		       + '\n' + str(self.distance_array)

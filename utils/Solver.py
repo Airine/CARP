@@ -1,10 +1,21 @@
+# from queue import PriorityQueue
+from utils.Graph import Graph
 
 
 class Solver(object):
 
-	def __init__(self):
-		pass
+	def __init__(self, CARP_data):
+		self.graph = Graph(CARP_data)
+		self.graph.floyd()
+		# self.tasks =
+		# self.free_
+		self.depot = 1
+		self.capacity = 0
 
+	@staticmethod
+	def get_tasks(connections):
+		pass
+	
 
 class Route(object):
 
@@ -17,8 +28,8 @@ class Route(object):
 	def __str__(self):
 		route = 's '
 		for path in self.paths:
-			route += str(path)
-		return route
+			route += str(path) + ','
+		return route[:-1]
 
 
 class Path(object):
@@ -35,3 +46,9 @@ class Path(object):
 			path += '({},{}),'.format(task[0], task[1])
 		path += '0'
 		return path
+
+
+if __name__ == '__main__':
+	p = Path([(1, 2), (2, 4), (5, 6)])
+	r = Route([p, p, p])
+	print(r)
