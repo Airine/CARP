@@ -1,4 +1,9 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
+from utils.GraphDrawer import draw_graph
+import numpy as np
+Edge = namedtuple('Edge', 'weight, demand, distance')
+
+Inf = np.Inf
 
 
 class Graph(object):
@@ -8,25 +13,32 @@ class Graph(object):
 		self.graph = defaultdict(set)
 		self._directed = directed
 		# self.add_connections(connections)
+		self.node_number = int(CARP_data.specification.get('VERTICES'))
+		self.edge_dict = dict()
+
 		self.weight_dict = dict()
+		self.distance_dict = dict()
+		# self.path_map = np.zeros((self.node_number, self.node_number), dtype=np.int16)
 		self.demand_dict = dict()
+		self.connections = list()
 		self.generator(CARP_data)
 
 	def generator(self, CARP_data):
 		""" Generate a graph with a CARP_data object """
 
-		connections = []
 		for i in CARP_data.data:
 			tempt = tuple(i[0:2])
-			connections.append(tempt)
+			self.connections.append(tempt)
+			self.edge_dict[tempt] = Edge(i[2], i[3], i[2])
 			self.weight_dict[tempt] = i[2]
+			self.distance_dict[tempt] = i[2]
 			self.demand_dict[tempt] = i[3]
-		self.add_connections(connections)
+		self.add_connections()
 
-	def add_connections(self, connections):
+	def add_connections(self):
 		""" Add connections (list of tuple pairs) to graph """
 
-		for node1, node2 in connections:
+		for node1, node2 in self.connections:
 			self.add(node1, node2)
 
 	def add(self, node1, node2):
@@ -59,7 +71,50 @@ class Graph(object):
 
 		assert self.is_connected(node1, node2)
 		tempt = (node1, node2) if node1 < node2 else (node2, node1)
+		print('get_weight:', self.weight_dict[tempt] == getattr(self.edge_dict[tempt], 'weight'))
 		return self.weight_dict[tempt]
+
+	def set_distance(self, node1, node2, dis):
+		""" Set the distance between two nodes """
+
+		tempt = (node1, node2) if node1 < node2 else (node2, node1)
+		is_edge = self.edge_dict.keys().__contains__(tempt)
+		temp_demand = 0
+		temp_weight = 0
+		if is_edge:
+			temp_weight = getattr(self.edge_dict[tempt], 'weight')
+			temp_demand = getattr(self.edge_dict[tempt], 'demand')
+		self.edge_dict[tempt] = Edge(temp_weight, temp_demand, dis)
+		self.distance_dict[tempt] = dis
+
+	def get_distance(self, node1, node2):
+		""" Get the distance between two nodes """
+
+		if node1 == node2:
+			return 0
+		tempt = (node1, node2) if node1 < node2 else (node2, node1)
+		# if self.distance_dict.get(tempt) is None:
+		if not self.edge_dict.keys().__contains__(tempt):
+			return Inf
+		print(tempt)
+		print(getattr(self.edge_dict[tempt], 'distance'))
+		print(self.distance_dict[tempt])
+		# print('get_distance:', self.weight_dict[tempt] == getattr(self.edge_dict[tempt], 'distance'))
+		return self.distance_dict[tempt]
+
+	def get_distances(self, node):
+		distances_list = list()
+		for dest in self.graph:
+			distances_list.append('{}->{}:{}'.format(node, dest, self.get_distance(node, dest)))
+		return distances_list
+
+	def floyd(self):
+		for i in self.graph:
+			for j in self.graph:
+				for k in self.graph:
+					tempt = self.get_distance(i, k) + self.get_distance(k, j)
+					if self.get_distance(i, j) > tempt:
+						self.set_distance(i, j, tempt)
 
 	def find_path(self, node1, node2, path=[], cost=0):
 		""" Find any path between node1 and node2 (may not be shortest) """
@@ -112,7 +167,16 @@ class Graph(object):
 					path_list.append(new_path)
 		return path_list
 
+	@staticmethod
+	def draw(CARP_data):
+		edges = list()
+		[edges.append(x[:3]) for x in CARP_data.data]
+		draw_graph(edges)
+		pass
+
 	def __str__(self):
 		return '{}({})'.format(self.__class__.__name__, dict(self.graph))\
 		       + '\n{}({})'.format('Weight', dict(self.weight_dict)) \
-		       + '\n{}({})'.format('Demand', dict(self.demand_dict))
+		       + '\n{}({})'.format('Demand', dict(self.demand_dict)) \
+		       + '\n{}({})'.format('Distance', dict(self.distance_dict)) \
+		       + '\n{}({})'.format('Total', dict(self.edge_dict))
