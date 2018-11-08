@@ -16,10 +16,10 @@ class Graph(object):
 		self.node_number = int(CARP_data.specification.get('VERTICES'))
 		self.edge_dict = dict()
 
-		self.weight_dict = dict()
-		self.distance_dict = dict()
+		# self.weight_dict = dict()
+		# self.distance_dict = dict()
 		# self.path_map = np.zeros((self.node_number, self.node_number), dtype=np.int16)
-		self.demand_dict = dict()
+		# self.demand_dict = dict()
 		self.connections = list()
 		self.generator(CARP_data)
 
@@ -30,9 +30,9 @@ class Graph(object):
 			tempt = tuple(i[0:2])
 			self.connections.append(tempt)
 			self.edge_dict[tempt] = Edge(i[2], i[3], i[2])
-			self.weight_dict[tempt] = i[2]
-			self.distance_dict[tempt] = i[2]
-			self.demand_dict[tempt] = i[3]
+			# self.weight_dict[tempt] = i[2]
+			# self.distance_dict[tempt] = i[2]
+			# self.demand_dict[tempt] = i[3]
 		self.add_connections()
 
 	def add_connections(self):
@@ -71,8 +71,7 @@ class Graph(object):
 
 		assert self.is_connected(node1, node2)
 		tempt = (node1, node2) if node1 < node2 else (node2, node1)
-		print('get_weight:', self.weight_dict[tempt] == getattr(self.edge_dict[tempt], 'weight'))
-		return self.weight_dict[tempt]
+		return getattr(self.edge_dict[tempt], 'weight')
 
 	def set_distance(self, node1, node2, dis):
 		""" Set the distance between two nodes """
@@ -85,7 +84,7 @@ class Graph(object):
 			temp_weight = getattr(self.edge_dict[tempt], 'weight')
 			temp_demand = getattr(self.edge_dict[tempt], 'demand')
 		self.edge_dict[tempt] = Edge(temp_weight, temp_demand, dis)
-		self.distance_dict[tempt] = dis
+		# self.distance_dict[tempt] = dis
 
 	def get_distance(self, node1, node2):
 		""" Get the distance between two nodes """
@@ -96,11 +95,7 @@ class Graph(object):
 		# if self.distance_dict.get(tempt) is None:
 		if not self.edge_dict.keys().__contains__(tempt):
 			return Inf
-		print(tempt)
-		print(getattr(self.edge_dict[tempt], 'distance'))
-		print(self.distance_dict[tempt])
-		# print('get_distance:', self.weight_dict[tempt] == getattr(self.edge_dict[tempt], 'distance'))
-		return self.distance_dict[tempt]
+		return getattr(self.edge_dict[tempt], 'distance')
 
 	def get_distances(self, node):
 		distances_list = list()
@@ -176,7 +171,4 @@ class Graph(object):
 
 	def __str__(self):
 		return '{}({})'.format(self.__class__.__name__, dict(self.graph))\
-		       + '\n{}({})'.format('Weight', dict(self.weight_dict)) \
-		       + '\n{}({})'.format('Demand', dict(self.demand_dict)) \
-		       + '\n{}({})'.format('Distance', dict(self.distance_dict)) \
 		       + '\n{}({})'.format('Total', dict(self.edge_dict))
