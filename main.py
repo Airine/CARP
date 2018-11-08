@@ -17,7 +17,9 @@ def main():
 	g.floyd()
 	print("---After Floyd---")
 	print(g)
-	[print(x) for x in g.get_distances(1)]
+
+	# [print(x) for x in g.get_distances(1)]
+	# [print(x) for x in g.get_distances(2)]
 	Graph.draw(cd)
 
 

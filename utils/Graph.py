@@ -12,14 +12,8 @@ class Graph(object):
 	def __init__(self, CARP_data, directed=False):
 		self.graph = defaultdict(set)
 		self._directed = directed
-		# self.add_connections(connections)
 		self.node_number = int(CARP_data.specification.get('VERTICES'))
 		self.edge_dict = dict()
-
-		# self.weight_dict = dict()
-		# self.distance_dict = dict()
-		# self.path_map = np.zeros((self.node_number, self.node_number), dtype=np.int16)
-		# self.demand_dict = dict()
 		self.connections = list()
 		self.generator(CARP_data)
 
@@ -30,9 +24,6 @@ class Graph(object):
 			tempt = tuple(i[0:2])
 			self.connections.append(tempt)
 			self.edge_dict[tempt] = Edge(i[2], i[3], i[2])
-			# self.weight_dict[tempt] = i[2]
-			# self.distance_dict[tempt] = i[2]
-			# self.demand_dict[tempt] = i[3]
 		self.add_connections()
 
 	def add_connections(self):
@@ -84,7 +75,6 @@ class Graph(object):
 			temp_weight = getattr(self.edge_dict[tempt], 'weight')
 			temp_demand = getattr(self.edge_dict[tempt], 'demand')
 		self.edge_dict[tempt] = Edge(temp_weight, temp_demand, dis)
-		# self.distance_dict[tempt] = dis
 
 	def get_distance(self, node1, node2):
 		""" Get the distance between two nodes """
@@ -92,7 +82,6 @@ class Graph(object):
 		if node1 == node2:
 			return 0
 		tempt = (node1, node2) if node1 < node2 else (node2, node1)
-		# if self.distance_dict.get(tempt) is None:
 		if not self.edge_dict.keys().__contains__(tempt):
 			return Inf
 		return getattr(self.edge_dict[tempt], 'distance')
@@ -100,7 +89,7 @@ class Graph(object):
 	def get_distances(self, node):
 		distances_list = list()
 		for dest in self.graph:
-			distances_list.append('{}->{}:{}'.format(node, dest, self.get_distance(node, dest)))
+			distances_list.append('{} -> {}\t: {}'.format(node, dest, self.get_distance(node, dest)))
 		return distances_list
 
 	def floyd(self):
@@ -110,57 +99,6 @@ class Graph(object):
 					tempt = self.get_distance(i, k) + self.get_distance(k, j)
 					if self.get_distance(i, j) > tempt:
 						self.set_distance(i, j, tempt)
-
-	def find_path(self, node1, node2, path=[], cost=0):
-		""" Find any path between node1 and node2 (may not be shortest) """
-
-		path = path + [node1]
-		# print(path)
-		if node1 == node2:
-			return path, cost
-		if node1 not in self.graph:
-			return None, cost
-		for node in self.graph[node1]:
-			tempt_cost = cost
-			tempt_cost += self.get_weight(node, node1)
-			if node not in path:
-				new_path = self.find_path(node, node2, path, tempt_cost)
-				if new_path[0] is not None:
-					# print(new_path)
-					return new_path, cost
-		return None, cost
-	#
-	# def find_path(self, node1, node2, path=[]):
-	# 	""" Find any path between node1 and node2 (may not be shortest) """
-	#
-	# 	path = path + [node1]
-	# 	if node1 == node2:
-	# 		return path
-	# 	if node1 not in self.graph:
-	# 		return None
-	# 	for node in self.graph[node1]:
-	# 		if node not in path:
-	# 			new_path = self.find_path(node, node2, path)
-	# 			if new_path:
-	# 				return new_path
-	# 	return None
-
-	def find_all_path(self, node1, node2, path=list()):
-		""" Find all the paths between node1 and node2 """
-
-		path_list = list()
-		cost_list = list()
-		path = path + [node1]
-		if node1 == node2:
-			return path
-		if node1 not in self.graph:
-			return None
-		for node in self.graph[node1]:
-			if node not in path:
-				new_path = self.find_path(node, node2, path)
-				if new_path:
-					path_list.append(new_path)
-		return path_list
 
 	@staticmethod
 	def draw(CARP_data):
