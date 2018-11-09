@@ -55,7 +55,7 @@ class Solver(object):
 		print(tasks + revert_tasks)
 		return tasks + revert_tasks
 
-	def path_scanning(self, method=0, random=False):
+	def path_scanning(self, method=0, random=False, give_up=8, reload=True):
 		global free_tasks
 		depot = self.depot
 		free_tasks = self.tasks
@@ -65,33 +65,46 @@ class Solver(object):
 			new_path = Path(list())
 			current_pos = depot  # 每次从基地出发（结束后回到基地）
 			current_cap = capacity  # 回到基地重新装满
-			distance = self.graph.distance_array[current_pos, depot]
+			# distance = self.graph.distance_array[current_pos, depot]
+			distance = self.graph.distance_array
 			m = method
 			while current_cap > 0:
 				available_tasks = list(filter(lambda t: self.graph.get_edge_attr(t[0], t[1], 'demand') < current_cap, free_tasks))
 				# 过滤出能装下的task
 				if len(available_tasks) == 0:  # 如果装不下了就停止
 					break
-				if current_cap < capacity/2 and method == 4:
+				if current_cap < capacity/give_up and method == 4:
 					m = 1
-				if current_cap < capacity/2 and method == 5:
+				if current_cap < capacity/give_up and method == 5:
 					m = 1
-				if current_cap < capacity/10 and method == 6:
-					m = 1
-				if current_cap < capacity/10 and method == 7:
-					m = 1
+				if current_cap < capacity/give_up and method == 6:
+					break
+				if current_cap < capacity/give_up and method == 7:
+					break
 				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t, m))
 				# 根据评估函数对task排序
 				task = available_tasks[0]
 				# 取估值最小的task
 				demand = self.graph.get_edge_attr(task[0], task[1], 'demand')
+
+				# 如果经过原点就立马重新出发,证实有用！
+				if distance[current_pos, task[0]] == distance[current_pos, depot] + distance[task[0], depot]\
+							and current_pos != depot\
+							and reload:
+					# print('- Reloading -')
+					# print(current_pos)
+					# print(task)
+					# print('---')
+					break
+
 				new_path.add_task(task)
 				free_tasks = Solver.remove_task(free_tasks, task)
 				current_pos = task[1]
 				current_cap -= demand
 			route.add_path(new_path)
 		# print(route)
-		[print(path, path.get_cost(self)) for path in route.paths]
+		[print(path.get_cost(self)) for path in route.paths]
+		print('Number of paths: ', len(route.paths))
 		return route
 
 	@staticmethod
@@ -155,6 +168,8 @@ class Path(object):
 
 
 if __name__ == '__main__':
-	p = Path([(1, 2), (2, 4), (5, 6)])
-	r = Route([p, p, p])
+	# p = Path([(1, 2), (2, 4), (5, 6)])
+	# r = Route([p, p, p])
+	rout = [[(1, 5), (5, 2), (2, 4), (4, 7), (7, 5), (5, 6)], [(1, 11), (11, 6), (6, 4), (4, 3), (3, 8)], [(1, 9), (9, 8), (8, 12), (12, 10), (10, 9), (9, 3), (3, 2)], [(1, 4), (4, 11), (11, 12), (10, 1), (1, 2), (2, 7), (1, 8)]]
+	r = Route()
 	print(r)
