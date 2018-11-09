@@ -9,7 +9,6 @@ class Solver(object):
 		self.graph.floyd()
 		self.tasks = self.get_tasks()
 		self.depot = int(CARP_data.specification.get('DEPOT'))
-		print('Depot:', self.depot)
 		self.capacity = int(CARP_data.specification.get('CAPACITY'))
 
 	def evaluate_task(self, current_pos, task, method=0):
@@ -24,13 +23,24 @@ class Solver(object):
 		start = task[0]
 		end = task[1]
 		demand = self.graph.get_edge_attr(start, end, 'demand')
+		distance_depot = self.graph.distance_array[self.depot, end]
 		cost = self.graph.distance_array[current_pos, start] \
 			+ self.graph.get_edge_attr(start, end, 'weight')
 		if method == 0:
 			return cost
 		if method == 1:
-			return demand/cost
+			return cost+distance_depot
 		if method == 2:
+			return demand/cost
+		if method == 3:
+			return cost/demand
+		if method == 4:  # special method 0
+			return cost
+		if method == 5:  # special method 3
+			return cost/demand
+		if method == 6:  # special method 0
+			return cost
+		if method == 7:  # special method 3
 			return cost/demand
 		return 0
 
@@ -45,31 +55,43 @@ class Solver(object):
 		print(tasks + revert_tasks)
 		return tasks + revert_tasks
 
-	def path_scanning(self):
+	def path_scanning(self, method=0, random=False):
 		global free_tasks
 		depot = self.depot
 		free_tasks = self.tasks
 		capacity = self.capacity
-		route = Route()
+		route = Route(list())
 		while len(free_tasks) > 0:
 			new_path = Path(list())
 			current_pos = depot  # 每次从基地出发（结束后回到基地）
 			current_cap = capacity  # 回到基地重新装满
 			distance = self.graph.distance_array[current_pos, depot]
+			m = method
 			while current_cap > 0:
 				available_tasks = list(filter(lambda t: self.graph.get_edge_attr(t[0], t[1], 'demand') < current_cap, free_tasks))
-				if len(available_tasks) == 0:
+				# 过滤出能装下的task
+				if len(available_tasks) == 0:  # 如果装不下了就停止
 					break
-				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t))
+				if current_cap < capacity/2 and method == 4:
+					m = 1
+				if current_cap < capacity/2 and method == 5:
+					m = 1
+				if current_cap < capacity/10 and method == 6:
+					m = 1
+				if current_cap < capacity/10 and method == 7:
+					m = 1
+				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t, m))
+				# 根据评估函数对task排序
 				task = available_tasks[0]
+				# 取估值最小的task
 				demand = self.graph.get_edge_attr(task[0], task[1], 'demand')
 				new_path.add_task(task)
 				free_tasks = Solver.remove_task(free_tasks, task)
 				current_pos = task[1]
 				current_cap -= demand
 			route.add_path(new_path)
-		print(route)
-		# [print(path) for path in route.paths]
+		# print(route)
+		[print(path, path.get_cost(self)) for path in route.paths]
 		return route
 
 	@staticmethod
@@ -87,6 +109,13 @@ class Route(object):
 
 	def add_path(self, path):
 		self.paths.append(path)
+
+	def get_cost(self, solver):
+		cost = 0
+		for path in self.paths:
+			cost += path.get_cost(solver)
+		print('Route cost:', cost)
+		return cost
 
 	def __str__(self):
 		route = 's '
@@ -108,9 +137,13 @@ class Path(object):
 		cost = 0
 		for task in self.tasks:
 			current_cost = solver.evaluate_task(current_pos, task)
-			print('{}->{}-{}:{}'.format(current_pos, task[0], task[1], current_cost))
+			# print('{}->{}-{}:{}'.format(current_pos, task[0], task[1], current_cost))
 			cost += current_cost
-		print('Total:', cost)
+			current_pos = task[1]
+		return_cost = solver.graph.distance_array[current_pos, solver.depot]
+		cost += return_cost
+		# print('Return cost:', return_cost)
+		# print('Total:', cost)
 		return cost
 
 	def __str__(self):

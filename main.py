@@ -21,7 +21,14 @@ def main():
 	# print("---After Floyd---")
 	# print(g)
 	solver = Solver(cd)
-	solver.path_scanning()
+	for i in [0, 1, 3, 4, 5, 6, 7]:  # method 2 被淘汰
+		print('---- method {} ----'.format(i))
+		st = time.time()
+		route = solver.path_scanning(i)
+		en = time.time()
+		ru = en - st
+		route.get_cost(solver)
+		print('Method {} cost: {} s'.format(i, ru))
 
 	end = time.time()
 	run = end-start
