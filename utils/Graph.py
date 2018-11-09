@@ -60,14 +60,19 @@ class Graph(object):
 
 		return node1 in self.graph and node2 in self.graph[node1]
 
-	def get_weight(self, node1, node2):
+	def get_edge_attr(self, node1, node2, attr_name):
 		""" Get the weight between two connected nodes """
 
 		assert self.is_connected(node1, node2)
 		tempt = (node1, node2) if node1 < node2 else (node2, node1)
-		return getattr(self.edge_dict[tempt], 'weight')
+		return getattr(self.edge_dict[tempt], attr_name)
 
 	def get_distances(self, node):
+		"""
+		Used for debug.
+		:param node:
+		:return:
+		"""
 		distances_list = list()
 		for dest in self.graph:
 			distances_list.append('{} -> {}\t: {}'.format(node, dest, self.distance_array[node, dest]))
@@ -75,15 +80,12 @@ class Graph(object):
 
 	def floyd(self):
 		for i in self.graph:
-			for j in self.graph:
-				for k in self.graph:
+			self.distance_array[i, i] = 0
+		for k in self.graph:
+			for i in self.graph:
+				for j in self.graph:
 					# tempt = self.get_distance(i, k) + self.get_distance(k, j)
-					tempt = self.distance_array[i, k] + self.distance_array[k, j]
-					# if self.get_distance(i, j) > tempt:
-					if self.distance_array[i, j] > tempt:
-						# self.set_distance(i, j, tempt)
-						self.distance_array[i, j] = tempt
-						self.distance_array[j, i] = tempt
+					self.distance_array[i, j] = min(self.distance_array[i, k] + self.distance_array[k, j], self.distance_array[i, j])
 
 	@staticmethod
 	def draw(CARP_data):

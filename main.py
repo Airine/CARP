@@ -3,6 +3,7 @@ import time
 from pprint import pprint
 from utils.CARPData import CARPData
 from utils.Graph import Graph
+from utils.Solver import Solver
 
 
 def main():
@@ -13,21 +14,17 @@ def main():
 	args = parser.parse_args()
 	cd = CARPData()
 	cd.read_file(args.instance)
-	print(cd)
-	g = Graph(cd)
-	print(g)
-	g.floyd()
-	print("---After Floyd---")
-	print(g)
+	# print(cd)
+	# g = Graph(cd)
+	# print(g)
+	# g.floyd()
+	# print("---After Floyd---")
+	# print(g)
+	solver = Solver(cd)
+	solver.path_scanning()
 
 	end = time.time()
 	run = end-start
-	print('Time cost: {} s'.format(run))
-	# [print(x) for x in g.get_distances(1)]
-	# [print(x) for x in g.get_distances(2)]
-
-	end = time.time()
-	run = end - start
 	print('Time cost: {} s'.format(run))
 	# Graph.draw(cd)
 
