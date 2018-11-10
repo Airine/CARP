@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 from collections import defaultdict, namedtuple
-from utils.GraphDrawer import draw_graph
+# from utils.GraphDrawer import draw_graph
 import numpy as np
 Edge = namedtuple('Edge', 'weight, demand')
 
@@ -22,7 +23,8 @@ class Graph(object):
 		""" Generate a graph with a CARP_data object """
 
 		for i in CARP_data.data:
-			tempt = tuple(i[0:2])
+			# tempt = tuple(i[0:2])
+			tempt = (i[1], i[0]) if i[1] < i[0] else tuple(i[0:2])
 			self.connections.append(tempt)
 			self.edge_dict[tempt] = Edge(i[2], i[3])
 			self.distance_array[tempt] = i[2]
@@ -91,7 +93,7 @@ class Graph(object):
 	def draw(CARP_data):
 		edges = list()
 		[edges.append(x[:3]) for x in CARP_data.data]
-		draw_graph(edges)
+		# draw_graph(edges)
 		pass
 
 	def __str__(self):

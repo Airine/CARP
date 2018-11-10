@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # from queue import PriorityQueue
 from utils.Graph import Graph
 
@@ -31,16 +32,14 @@ class Solver(object):
 		if method == 1:
 			return cost+distance_depot
 		if method == 2:
-			return demand/cost
-		if method == 3:
 			return cost/demand
-		if method == 4:  # special method 0
+		if method == 3:  # special method 0
 			return cost
-		if method == 5:  # special method 3
+		if method == 4:  # special method 3
 			return cost/demand
-		if method == 6:  # special method 0
+		if method == 5:  # special method 0
 			return cost
-		if method == 7:  # special method 3
+		if method == 6:  # special method 3
 			return cost/demand
 		return 0
 
@@ -52,7 +51,6 @@ class Solver(object):
 		edges = self.graph.connections
 		tasks = list(filter(lambda x: self.graph.get_edge_attr(x[0], x[1], 'demand') > 0, edges))
 		revert_tasks = list(map(lambda x: (x[1], x[0]), tasks))
-		print(tasks + revert_tasks)
 		return tasks + revert_tasks
 
 	def path_scanning(self, method=0, random=False, give_up=8, reload=True):
@@ -73,13 +71,13 @@ class Solver(object):
 				# 过滤出能装下的task
 				if len(available_tasks) == 0:  # 如果装不下了就停止
 					break
+				if current_cap < capacity/give_up and method == 3:
+					m = 1
 				if current_cap < capacity/give_up and method == 4:
 					m = 1
 				if current_cap < capacity/give_up and method == 5:
-					m = 1
-				if current_cap < capacity/give_up and method == 6:
 					break
-				if current_cap < capacity/give_up and method == 7:
+				if current_cap < capacity/give_up and method == 6:
 					break
 				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t, m))
 				# 根据评估函数对task排序
@@ -91,10 +89,6 @@ class Solver(object):
 				if distance[current_pos, task[0]] == distance[current_pos, depot] + distance[task[0], depot]\
 							and current_pos != depot\
 							and reload:
-					# print('- Reloading -')
-					# print(current_pos)
-					# print(task)
-					# print('---')
 					break
 
 				new_path.add_task(task)
@@ -102,9 +96,8 @@ class Solver(object):
 				current_pos = task[1]
 				current_cap -= demand
 			route.add_path(new_path)
-		# print(route)
-		[print(path.get_cost(self)) for path in route.paths]
-		print('Number of paths: ', len(route.paths))
+		# [print(path.get_cost(self)) for path in route.paths]
+		# print('Number of paths: ', len(route.paths))
 		return route
 
 	@staticmethod
@@ -127,7 +120,7 @@ class Route(object):
 		cost = 0
 		for path in self.paths:
 			cost += path.get_cost(solver)
-		print('Route cost:', cost)
+		# print('Route cost:', cost)
 		return cost
 
 	def __str__(self):
