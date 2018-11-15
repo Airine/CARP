@@ -18,15 +18,23 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('instance', type=argparse.FileType('r'),
 	                    help='filename for CARP instance')
+	parser.add_argument('-t', metavar='termination', type=int,
+	                    help='termination time limit', required=True)
+	parser.add_argument('-s', metavar='random seed',
+	                    help='random seed for stochastic algorithm')
 	args = parser.parse_args()
 	cd = CARPData()
 	cd.read_file(args.instance)
+	time_limit = args.t
+	seed = args.s
 
 	# graph(cd)
 
 	solver = Solver(cd)
 
-	# log(solver, cd, 14)
+	log(solver, cd, 14, 7)
+
+	return
 
 	end_1 = time.time()
 
@@ -53,6 +61,8 @@ def main():
 	# 		add_route(tempt, solver, i, j)
 	# end_3 = time.time()
 
+	normal_proc = 0
+
 	end = time.time()
 	multi_proc = end_2-end_1
 	graph_proc = end_1-start
@@ -73,9 +83,10 @@ def graph(cd):
 	print(g)
 
 
-def log(solver, cd, end_fraction=10):
+def log(solver, cd, end_fraction=10, methods=11):
 	"""
 	Generate csv files to compare the quality with different methods
+	:param methods:
 	:param solver: CARP_solver
 	:param cd: CARP_data
 	:param end_fraction: the end fraction
@@ -85,7 +96,7 @@ def log(solver, cd, end_fraction=10):
 	for frac in range(2, end_fraction):
 		log_line = list()
 		log_line.append('1/{}'.format(frac))
-		for i in range(7):  # method 2 被淘汰
+		for i in range(methods):  # method 2 被淘汰
 			# print('---- method {} ----'.format(i))
 			st = time.time()
 			route = solver.path_scanning(i, give_up=frac)
@@ -94,6 +105,8 @@ def log(solver, cd, end_fraction=10):
 			cost = route.get_cost(solver)
 			log_line.append(cost)
 			# print('Method {} cost: {} s'.format(i, ru))
+		cost = solver.path_scanning(rand=True, give_up=frac).get_cost(solver)
+		log_line.append(cost)
 		log_content.append(log_line)
 	# print(log_content)
 	filename = 'csv/' + cd.specification.get('NAME') + '.csv'
@@ -101,7 +114,7 @@ def log(solver, cd, end_fraction=10):
 	with open(filename, 'w') as f:
 		writer = csv.writer(f)
 		header = ['give_up_fraction', 'cost', 'cost+dis_depot', 'cost/demand', 'cost and dis_depot',
-		          'cost/demand and dis_depot', 'cost and give_up', 'cost/demand and give_up']
+		          'cost/demand and dis_depot', 'cost and give_up', 'cost/demand and give_up', 'random']
 		writer.writerow(header)
 		writer.writerows(log_content)
 

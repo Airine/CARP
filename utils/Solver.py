@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # from queue import PriorityQueue
 from utils.Graph import Graph
+import random
 
 
 class Solver(object):
@@ -26,6 +27,8 @@ class Solver(object):
 		demand = self.graph.get_edge_attr(start, end, 'demand')
 		distance_depot = self.graph.distance_array[self.depot, end]
 		cost = self.graph.distance_array[current_pos, start] \
+			+ self.graph.get_edge_attr(start, end, 'weight')
+		cost_depot = self.graph.distance_array[self.depot, start] \
 			+ self.graph.get_edge_attr(start, end, 'weight')
 		if method == 0:
 			return cost
@@ -53,7 +56,7 @@ class Solver(object):
 		revert_tasks = list(map(lambda x: (x[1], x[0]), tasks))
 		return tasks + revert_tasks
 
-	def path_scanning(self, method=0, random=False, give_up=8, reload=True):
+	def path_scanning(self, method=0, rand=False, give_up=8, reload=True):
 		global free_tasks
 		depot = self.depot
 		free_tasks = self.tasks
@@ -66,27 +69,31 @@ class Solver(object):
 			# distance = self.graph.distance_array[current_pos, depot]
 			distance = self.graph.distance_array
 			m = method
+			if rand:
+				m = random.randint(0, 7)
+				# give_up = random.randint(2, 14)
 			while current_cap > 0:
-				available_tasks = list(filter(lambda t: self.graph.get_edge_attr(t[0], t[1], 'demand') < current_cap, free_tasks))
-				# 过滤出能装下的task
-				if len(available_tasks) == 0:  # 如果装不下了就停止
-					break
 				if current_cap < capacity/give_up and method == 3:
 					m = 1
 				if current_cap < capacity/give_up and method == 4:
 					m = 1
-				if current_cap < capacity/give_up and method == 5:
+				if current_cap < capacity/give_up and method >= 5:
 					break
-				if current_cap < capacity/give_up and method == 6:
+				available_tasks = list(filter(lambda t: self.graph.get_edge_attr(t[0], t[1], 'demand') < current_cap, free_tasks))
+				# 过滤出能装下的task
+				if len(available_tasks) == 0:  # 如果装不下了就停止
 					break
 				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t, m))
 				# 根据评估函数对task排序
 				task = available_tasks[0]
+				# if rand:
+				# 	mini = min(len(available_tasks)-1, 3)
+				# 	task = available_tasks[random.randint(0,mini)]
 				# 取估值最小的task
 				demand = self.graph.get_edge_attr(task[0], task[1], 'demand')
 
 				# 如果经过原点就立马重新出发,证实有用！
-				if distance[current_pos, task[0]] == distance[current_pos, depot] + distance[task[0], depot]\
+				if distance[current_pos, task[0]] >= distance[current_pos, depot] + distance[task[0], depot]\
 							and current_pos != depot\
 							and reload:
 					break
