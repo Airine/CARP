@@ -13,10 +13,11 @@ class Solver(object):
 		self.depot = int(CARP_data.specification.get('DEPOT'))
 		self.capacity = int(CARP_data.specification.get('CAPACITY'))
 
-	def evaluate_task(self, current_pos, task, method=0):
+	def evaluate_task(self, current_pos, task, method=0, current_capacity=0):
 		"""
 		第一次尝试每次使用evaluate_task对所有free_tasks排序，
 		此函数只起到评估排序功能
+		:param current_capacity:
 		:param current_pos: 现在的位置
 		:param task: 需要评估的task
 		:param method: 使用的评估方法 { 0:cost,}
@@ -46,6 +47,9 @@ class Solver(object):
 			return cost/demand
 		return 0
 
+	def distance2task(self, current_post, task):
+		return self.graph.distance_array[task[0], current_post]
+
 	@staticmethod
 	def if_continue(c):
 		pass
@@ -57,7 +61,7 @@ class Solver(object):
 		return tasks + revert_tasks
 
 	def path_scanning(self, method=0, rand=False, give_up=8, reload=True):
-		global free_tasks
+		# global free_tasks
 		depot = self.depot
 		free_tasks = self.tasks
 		capacity = self.capacity
@@ -86,9 +90,7 @@ class Solver(object):
 				available_tasks.sort(key=lambda t: self.evaluate_task(current_pos, t, m))
 				# 根据评估函数对task排序
 				task = available_tasks[0]
-				# if rand:
-				# 	mini = min(len(available_tasks)-1, 3)
-				# 	task = available_tasks[random.randint(0,mini)]
+
 				# 取估值最小的task
 				demand = self.graph.get_edge_attr(task[0], task[1], 'demand')
 

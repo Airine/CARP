@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 import time
+import numpy as np
 from utils.CARPData import CARPData
 from utils.Graph import Graph
 from utils.Solver import Solver
@@ -8,8 +9,8 @@ import csv
 from multiprocessing import Process, Pool, Manager
 
 
-def add_route(route_list, solver, i, give_up_frac=10):
-	route_list.append(solver.path_scanning(i, give_up=give_up_frac))
+def add_route(route_list, solver, i, give_up_frac=10, rand=False):
+	route_list.append(solver.path_scanning(i, rand=rand, give_up=give_up_frac))
 	# queue.append(solver.path_scanning(i, give_up=give_up_frac))
 
 
@@ -32,21 +33,26 @@ def main():
 
 	solver = Solver(cd)
 
-	log(solver, cd, 14, 7)
-
-	return
+	# log(solver, cd, 14, 7)
+	#
+	# pre_end = time.time()
+	# print('Time:', pre_end-start)
+	# return
 
 	end_1 = time.time()
 
+	random_size = 100
 	# TODO: 多进程用不同的method求route返回一个route列表
 	mgr = Manager()
 	route_list = mgr.list()
 	pool = Pool(processes=13)
 	for i in range(3):
 		pool.apply_async(add_route, args=(route_list, solver, i))
-	for i in range(3, 7):
-		for j in range(2, 14):
+	for j in range(2, 14):
+		for i in range(3, 7):
 			pool.apply_async(add_route, args=(route_list, solver, i, j))
+		for k in range(random_size):
+			pool.apply_async(add_route, args=(route_list, solver, 0, j, True))
 	pool.close()
 	pool.join()
 
@@ -69,6 +75,19 @@ def main():
 	# normal_proc = end_3-end_2
 	run = end-start
 	print('Time cost: {} s\nGraph processing: {} s\nMultiprocessing: {} s\nNormal processing: {} s'.format(run, graph_proc, multi_proc, normal_proc))
+	results = list(route_list)
+	min_cost = np.Inf
+	result = None
+	for route in results:
+		cost = route.get_cost(solver)
+		if cost < min_cost:
+			result = route
+			min_cost = cost
+	print('Results size:', len(results))
+	print('Random size:', random_size)
+	print('---------------------------------------------------------------------------------------------------------')
+	print(result)
+	print('q', min_cost)
 	# print(len(route_list))
 	# for route in route_list:
 	# 	print('{} costs {}'.format(route, route.get_cost(solver)))
@@ -93,30 +112,35 @@ def log(solver, cd, end_fraction=10, methods=11):
 	:return: None
 	"""
 	log_content = list()
+	min_cost = np.Inf
+	min_route = None
 	for frac in range(2, end_fraction):
 		log_line = list()
 		log_line.append('1/{}'.format(frac))
 		for i in range(methods):  # method 2 被淘汰
-			# print('---- method {} ----'.format(i))
-			st = time.time()
 			route = solver.path_scanning(i, give_up=frac)
-			en = time.time()
-			ru = en - st
 			cost = route.get_cost(solver)
+			if cost < min_cost:
+				min_cost = cost
+				min_route = route
 			log_line.append(cost)
-			# print('Method {} cost: {} s'.format(i, ru))
-		cost = solver.path_scanning(rand=True, give_up=frac).get_cost(solver)
-		log_line.append(cost)
+		for j in range(10):
+			route = solver.path_scanning(rand=True, give_up=frac)
+			cost = route.get_cost(solver)
+			if cost < min_cost:
+				min_cost = cost
+				min_route = route
+			log_line.append(cost)
 		log_content.append(log_line)
-	# print(log_content)
 	filename = 'csv/' + cd.specification.get('NAME') + '.csv'
-	# with open(filename, 'w', newline='') as f:
 	with open(filename, 'w') as f:
 		writer = csv.writer(f)
 		header = ['give_up_fraction', 'cost', 'cost+dis_depot', 'cost/demand', 'cost and dis_depot',
 		          'cost/demand and dis_depot', 'cost and give_up', 'cost/demand and give_up', 'random']
 		writer.writerow(header)
 		writer.writerows(log_content)
+	print(min_route)
+	print('q', min_cost)
 
 
 if __name__ == '__main__':
