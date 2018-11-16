@@ -121,16 +121,30 @@ class Route(object):
 
 	def __init__(self, paths=list()):
 		self.paths = paths
+		self.cost = None
 
 	def add_path(self, path):
 		self.paths.append(path)
 
 	def get_cost(self, solver):
+		if not self.cost:  # 如果曾经计算过cost，就不不要再次计算
+			return self.cost
 		cost = 0
 		for path in self.paths:
 			cost += path.get_cost(solver)
-		# print('Route cost:', cost)
+		self.cost = cost
 		return cost
+
+	def __eq__(self, other):
+		if not isinstance(other, Route):
+			return False
+		return set(self.paths) == set(other.paths)
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def __hash__(self):
+		return hash(set(self.paths))
 
 	def __str__(self):
 		route = 's '
@@ -143,35 +157,43 @@ class Path(object):
 
 	def __init__(self, tasks=list()):
 		self.tasks = tasks
+		self.cost = None
+		self.str = None
 
 	def add_task(self, task):
 		self.tasks.append(task)
 
 	def get_cost(self, solver):
+		if not self.cost:
+			return self.cost
 		current_pos = solver.depot
 		cost = 0
 		for task in self.tasks:
 			current_cost = solver.evaluate_task(current_pos, task)
-			# print('{}->{}-{}:{}'.format(current_pos, task[0], task[1], current_cost))
 			cost += current_cost
 			current_pos = task[1]
 		return_cost = solver.graph.distance_array[current_pos, solver.depot]
 		cost += return_cost
-		# print('Return cost:', return_cost)
-		# print('Total:', cost)
+		self.cost = cost
 		return cost
 
+	def __eq__(self, other):
+		if not isinstance(other, Path):
+			return False
+		return self.__str__() == other.__str__()
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def __hash__(self):
+		return hash(self.__str__())
+
 	def __str__(self):
+		if not self.str:
+			return self.str
 		path = '0,'
 		for task in self.tasks:
 			path += '({},{}),'.format(task[0], task[1])
 		path += '0'
+		self.str = path
 		return path
-
-
-if __name__ == '__main__':
-	# p = Path([(1, 2), (2, 4), (5, 6)])
-	# r = Route([p, p, p])
-	rout = [[(1, 5), (5, 2), (2, 4), (4, 7), (7, 5), (5, 6)], [(1, 11), (11, 6), (6, 4), (4, 3), (3, 8)], [(1, 9), (9, 8), (8, 12), (12, 10), (10, 9), (9, 3), (3, 2)], [(1, 4), (4, 11), (11, 12), (10, 1), (1, 2), (2, 7), (1, 8)]]
-	r = Route()
-	print(r)
