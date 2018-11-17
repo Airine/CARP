@@ -67,7 +67,7 @@ class Solver(object):
 	def path_scanning(self, method=0, rand=False, give_up=8, reload=True):
 		# global free_tasks
 		depot = self.depot
-		free_tasks = self.tasks
+		free_tasks = list(self.tasks)
 		capacity = self.capacity
 		route = Route(list())
 		while len(free_tasks) > 0:
@@ -105,7 +105,8 @@ class Solver(object):
 					break
 
 				new_path.add_task(task)
-				free_tasks = Solver.remove_task(free_tasks, task)
+				# free_tasks = Solver.remove_task(free_tasks, task)
+				Solver.remove_task(free_tasks, task)
 				current_pos = task[1]
 				current_cap -= demand
 			route.add_path(new_path)
@@ -116,9 +117,11 @@ class Solver(object):
 	@staticmethod
 	def remove_task(tasks, task):
 		rev_task = (task[1], task[0])
+		tasks.remove(task)
+		tasks.remove(rev_task)
 		# print('Tasks: {}\n Task:{}\nAfter remove:'.format(tasks, task))
 		# print(list(filter(lambda x: x not in (task, rev_task), tasks)))
-		return list(filter(lambda x: x not in (task, rev_task), tasks))
+		# return list(filter(lambda x: x not in (task, rev_task), tasks))
 
 
 class Route(object):

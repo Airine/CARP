@@ -93,10 +93,11 @@ def main():
 	new = result
 	while True:
 		# time.sleep(3)
-		new = evo.flip(new)
-		route_set.add(new)
+		# new = evo.flip_rand(new)
+		new = evo.flip_all(new)
 		if new in route_set:
 			break
+		route_set.add(new)
 		times += 1
 	print(times)
 	# print(len(route_list))
