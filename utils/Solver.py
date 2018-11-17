@@ -12,7 +12,12 @@ class Solver(object):
 		self.tasks = self.get_tasks()
 		self.depot = int(CARP_data.specification.get('DEPOT'))
 		self.capacity = int(CARP_data.specification.get('CAPACITY'))
+		self.task_number = int(CARP_data.specification.get('REQUIRED EDGES'))
+		# print(len(self.tasks))
+		# print(self.task_number)
+		# assert len(self.tasks) == self.task_number
 
+	# TODO: 这也是要重写的内容
 	def evaluate_task(self, current_pos, task, method=0, current_capacity=0):
 		"""
 		第一次尝试每次使用evaluate_task对所有free_tasks排序，
@@ -25,14 +30,16 @@ class Solver(object):
 		"""
 		start = task[0]
 		end = task[1]
-		demand = self.graph.get_edge_attr(start, end, 'demand')
-		distance_depot = self.graph.distance_array[self.depot, end]
 		cost = self.graph.distance_array[current_pos, start] \
-			+ self.graph.get_edge_attr(start, end, 'weight')
-		cost_depot = self.graph.distance_array[self.depot, start] \
-			+ self.graph.get_edge_attr(start, end, 'weight')
+		        + self.graph.get_edge_attr(start, end, 'weight')
 		if method == 0:
 			return cost
+		demand = self.graph.get_edge_attr(start, end, 'demand')
+		distance_depot = self.graph.distance_array[self.depot, end]
+
+		cost_depot = self.graph.distance_array[self.depot, start] \
+			+ self.graph.get_edge_attr(start, end, 'weight')
+
 		if method == 1:
 			return cost+distance_depot
 		if method == 2:
@@ -50,16 +57,13 @@ class Solver(object):
 	def distance2task(self, current_post, task):
 		return self.graph.distance_array[task[0], current_post]
 
-	@staticmethod
-	def if_continue(c):
-		pass
-
 	def get_tasks(self):
 		edges = self.graph.connections
 		tasks = list(filter(lambda x: self.graph.get_edge_attr(x[0], x[1], 'demand') > 0, edges))
 		revert_tasks = list(map(lambda x: (x[1], x[0]), tasks))
 		return tasks + revert_tasks
 
+	# TODO: 重写path_scanning 要能够在path-scanning的同时计算出route的 cost
 	def path_scanning(self, method=0, rand=False, give_up=8, reload=True):
 		# global free_tasks
 		depot = self.depot
@@ -127,7 +131,7 @@ class Route(object):
 		self.paths.append(path)
 
 	def get_cost(self, solver):
-		if not self.cost:  # 如果曾经计算过cost，就不不要再次计算
+		if self.cost is not None:  # 如果曾经计算过cost，就不不要再次计算
 			return self.cost
 		cost = 0
 		for path in self.paths:
@@ -144,7 +148,7 @@ class Route(object):
 		return not self.__eq__(other)
 
 	def __hash__(self):
-		return hash(set(self.paths))
+		return hash(frozenset(self.paths))
 
 	def __str__(self):
 		route = 's '
@@ -157,14 +161,25 @@ class Path(object):
 
 	def __init__(self, tasks=list()):
 		self.tasks = tasks
+		self.cap = None
 		self.cost = None
 		self.str = None
 
 	def add_task(self, task):
 		self.tasks.append(task)
 
+	def remove_task(self, task):
+		self.tasks.remove(task)
+		self.cap = None
+		self.cost = None
+
+	def get_cap(self, solver):
+		if self.cap is not None:
+			return self.cap
+		return sum([solver.graph.get_edge_attr(task[0], task[1], 'demand') for task in self.tasks])
+
 	def get_cost(self, solver):
-		if not self.cost:
+		if self.cost is not None:
 			return self.cost
 		current_pos = solver.depot
 		cost = 0
@@ -189,7 +204,7 @@ class Path(object):
 		return hash(self.__str__())
 
 	def __str__(self):
-		if not self.str:
+		if self.str is not None:
 			return self.str
 		path = '0,'
 		for task in self.tasks:

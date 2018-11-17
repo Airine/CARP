@@ -5,12 +5,14 @@ import numpy as np
 from utils.CARPData import CARPData
 from utils.Graph import Graph
 from utils.Solver import Solver
+from utils.Evolution import Evolution
 import csv
 from multiprocessing import Process, Pool, Manager
 
 
 def add_route(route_list, solver, i, give_up_frac=10, rand=False):
-	route_list.append(solver.path_scanning(i, rand=rand, give_up=give_up_frac))
+	route = solver.path_scanning(i, rand=rand, give_up=give_up_frac)
+	route_list.append(route)
 	# queue.append(solver.path_scanning(i, give_up=give_up_frac))
 
 
@@ -41,7 +43,7 @@ def main():
 
 	end_1 = time.time()
 
-	random_size = 100
+	random_size = 50
 	# TODO: 多进程用不同的method求route返回一个route列表
 	mgr = Manager()
 	route_list = mgr.list()
@@ -58,23 +60,19 @@ def main():
 
 	end_2 = time.time()
 
-	# # TODO: 不用多进程
-	# tempt = list()
-	# for i in range(3):
-	# 	add_route(tempt, solver, i)
-	# for i in range(3, 7):
-	# 	for j in range(2, 14):
-	# 		add_route(tempt, solver, i, j)
-	# end_3 = time.time()
+	# # TODO: Other operation
+	route_set = set(route_list)
 
-	normal_proc = 0
+	end_3 = time.time()
+
+	# normal_proc = 0
 
 	end = time.time()
 	multi_proc = end_2-end_1
 	graph_proc = end_1-start
-	# normal_proc = end_3-end_2
+	normal_proc = end_3-end_2
 	run = end-start
-	print('Time cost: {} s\nGraph processing: {} s\nMultiprocessing: {} s\nNormal processing: {} s'.format(run, graph_proc, multi_proc, normal_proc))
+	print('Time cost: {} s\nGraph processing: {} s\nMultiprocessing: {} s\nList->set: {} s'.format(run, graph_proc, multi_proc, normal_proc))
 	results = list(route_list)
 	min_cost = np.Inf
 	result = None
@@ -84,13 +82,39 @@ def main():
 			result = route
 			min_cost = cost
 	print('Results size:', len(results))
+	print('Set size:', len(route_set))
 	print('Random size:', random_size)
 	print('---------------------------------------------------------------------------------------------------------')
 	print(result)
 	print('q', min_cost)
+	print('---------------------------------------------------------------------------------------------------------')
+	evo = Evolution(solver, route_set)
+	times = 0
+	new = result
+	while True:
+		# time.sleep(3)
+		new = evo.flip(new)
+		route_set.add(new)
+		if new in route_set:
+			break
+		times += 1
+	print(times)
 	# print(len(route_list))
 	# for route in route_list:
 	# 	print('{} costs {}'.format(route, route.get_cost(solver)))
+
+	# time_1 = time.time()
+	# # flag = result in results
+	# results.append(result)
+	# time_2 = time.time()
+	# print('list:', time_2 - time_1)
+	# # flag2 = result in route_set
+	# route_set.add(result)
+	# time_3 = time.time()
+	# print('set:', time_3-time_2)
+	# tempt = list(route_set)
+	# time_4 = time.time()
+	# print('set->list:', time_4-time_3)
 
 
 def graph(cd):
