@@ -2,18 +2,20 @@ import math
 
 import numpy as np
 import time
+import copy
 from utils.Solver import *
 
 
 class Evolution(object):
 
-	def __init__(self, solver, population_set, pop_size=1000, time_limit=50):
+	def __init__(self, solver, population_set, pop_size=30, time_limit=10):
 		self.solver = solver
 		self.population = population_set
 		self.population_size = pop_size
 		self.time_limit = time_limit
 		self.start_time = time.time()
 		self.best = None
+		self.min_cost = None
 
 	def get_best(self):
 		if self.best is not None:
@@ -21,6 +23,13 @@ class Evolution(object):
 		else:
 			self.refresh_best()
 			return self.best
+
+	def get_min_cost(self):
+		if self.min_cost is not None:
+			return self.min_cost
+		else:
+			self.refresh_best()
+			return self.min_cost
 
 	def refresh_best(self):
 		solutions = list(self.population)
@@ -32,73 +41,126 @@ class Evolution(object):
 				min_cost = cost
 				best_solution = route
 		self.best = best_solution
+		self.min_cost = min_cost
 
 	def select_parents(self):
-		pop = list(self.population[self.population_size:])
-		best = self.get_best()
-		weights = list(map(lambda route: math.pow(best, 2)/route.get_cost(self.solver), pop))
+		pop = list(self.population)
+		pop.sort(key=lambda route: route.get_cost(self.solver))
+		pop = pop[:self.population_size]
+		min_cost = self.get_min_cost()
+		weights = list(map(lambda route: math.pow(2*min_cost, 2)/route.get_cost(self.solver), pop))
 		a, b = Evolution.weighted_choice2(weights)
 		return pop[a], pop[b]
 
 	# TODO: 写完crossover
 	def crossover(self, pa, pb):
 		free_tasks = list(self.solver.tasks)
-		child = Route(list())
-		pa_path_number = len(pa.paths)
-		rand = random.randint(0, pa_path_number-1)
-		pa_gene_path = pa.paths[rand]
+		child = list()
+		pa_paths = copy.deepcopy(pa.paths)
+		pb_paths = copy.deepcopy(pb.paths)
 		capa = self.solver.capacity
-		task_set = set()
-		for task in pa_gene_path:
-			Solver.remove_task(free_tasks, task)
-		child.add_path(pa_gene_path)
 
-		for path in pb.paths:
-			tasks = list()
-			tempt_capa = capa
+		pa_path_number = len(pa_paths)
+		rand = random.randint(0, pa_path_number-1)
+		pa_gene_path = pa_paths[rand]
+		# print(pa_gene_path)
+		[Solver.remove_task(free_tasks, task) for task in pa_gene_path.tasks]
+		child.append(pa_gene_path.tasks)
+		child.append([])
+
+		tempt_cap = capa
+
+		for path in pb_paths:
 			for task in path.tasks:
-				if not free_tasks:
+				if len(free_tasks) == 0:
 					break
 				if task not in free_tasks:
 					continue
 				demand = self.solver.graph.get_edge_attr(task[0], task[1], 'demand')
-				if tempt_capa - demand >= 0:
-					tasks.append(task)
+				if tempt_cap - demand >= 0:
+					child[-1].append(task)
 				else:
-					print('我不信')
-					break
-				tempt_capa -= demand
+					child.append([])
+					child[-1].append(task)
+					tempt_cap = capa
 				Solver.remove_task(free_tasks, task)
-			child.add_path(Path(tasks))
-		print('我真不信', free_tasks)
-		print('parents cost:', pa.get_cost(self.solver), ',', pb.get_cost(self.solver))
-		print('child cost:', child.get_cost(self.solver))
-		return child
+				tempt_cap -= demand
+		route = Route(list())
+		# print(child)
+		# exit(0)
+		for tasks in child:
+			route.add_path(Path(tasks))
+		return route
+
+	def self_evolute(self, rls):
+		while time.time() - self.start_time < self.time_limit:
+			p_1, p_2 = self.select_parents()
+			# child_a = self.local_search(p_1, rls)
+			# child_b = self.local_search(p_2, rls)
+			# child = child_a if child_a.get_cost(self.solver) < child_b.get_cost(self.solver) else child_b
+			# if child.get_cost(self.solver) > min(p_1.get_cost(self.solver), p_2.get_cost(self.solver)):
+			# 	continue
+			if random.random() < rls:
+				brothers = self.local_search_plus(p_1)
+				for brother in brothers:
+					if brother not in self.population:
+						self.population.add(brother)
+			else:
+				brothers = self.local_search_plus(p_2)
+				for brother in brothers:
+					if brother not in self.population:
+						self.population.add(brother)
+			# if  not in self.population:
+			# 	print('self evolution')
+			# 	self.population.add(child)
+			self.refresh_best()
+
+	def local_search_plus(self, route):
+		# TODO: 没看懂后面的操作
+		# print('local searching')
+		# cost = route.get_cost(self.solver)
+		brothers = list()
+		brothers.append(self.single_insertion(route))
+		brothers.append(self.flip_rand(route))
+		brothers.append(self.flip_rand(brothers[0]))
+		brothers.append(self.flip_all(route))
+		return brothers
 
 	def local_search(self, route, rls):
 		# TODO: 没看懂后面的操作
+		# print('local searching')
 		cost = route.get_cost(self.solver)
-		brothers = list()
-		brothers.append(self.single_insertion(route))
-		brothers.append(self.double_insertion(route))
-		brothers.append(self.swap(route))
-		best = max(brothers, key=lambda solution: solution.get_cost(self.solver))
-		if best.get_cost(self.solver) == cost:
+		brother = route
+		operator = random.choice([1, 1, 2, 2, 3])
+		if operator == 1:
+			brother = self.single_insertion(route)
+		if operator == 2:
+			brother = self.flip_rand(route)
+		if operator == 3:
+			brother = self.flip_all(route)
+
+		# best = max(brothers, key=lambda solution: solution.get_cost(self.solver))
+		if brother.get_cost(self.solver) == cost:
+			# print('收敛了')
 			return route
 		elif random.random() < rls:
-			return self.local_search(best, rls)
+			return self.local_search(brother, rls)
 		else:
-			return best
+			return brother
 
 	def evolute(self, rls):
 		while time.time() - self.start_time < self.time_limit:
 			p_1, p_2 = self.select_parents()
-			child = self.crossover(p_1, p_2)
-			# if random.random < rls:
-			# 	brother = self.local_search(child, rls)
-			# 	if brother not in self.population:
-			# 		self.population.add(brother)
-			if child not in self.population:
+			childa = self.crossover(p_1, p_2)
+			childb = self.crossover(p_2, p_1)
+			child = childa if childa.get_cost(self.solver) < childb.get_cost(self.solver) else childb
+			if child.get_cost(self.solver) > min(p_1.get_cost(self.solver), p_2.get_cost(self.solver)):
+				continue
+			if random.random() < rls:
+				brother = self.local_search(child, rls)
+				if brother not in self.population:
+					self.population.add(brother)
+			elif child not in self.population:
 				self.population.add(child)
 			self.refresh_best()
 
@@ -171,8 +233,8 @@ class Evolution(object):
 						break
 					current_pos = task[-1]
 			new_route.add_path(Path(tasks))
-		print('old cost:', route.get_cost(self.solver))
-		print('new cost:', new_route.get_cost(self.solver))
+		# print('old cost:', route.get_cost(self.solver))
+		# print('new cost:', new_route.get_cost(self.solver))
 		return new_route
 
 	def flip_all(self, route):
@@ -199,42 +261,67 @@ class Evolution(object):
 					task = flip_task
 				current_pos = task[-1]
 			new_route.add_path(Path(tasks))
-		print('old cost:', route.get_cost(self.solver))
-		print('new cost:', new_route.get_cost(self.solver))
+		# print('old cost:', route.get_cost(self.solver))
+		# print('new cost:', new_route.get_cost(self.solver))
 		return new_route
 
 	# TODO: single insertion
-	def single_insertion(self, route):
-		# rand = random.random() * self.solver.task_number
+	def single_insertion(self, route_origin):
+		route = copy.deepcopy(route_origin)
 		task_number = self.solver.task_number
-		rand = int(random.random() * task_number)
+		rand = int(random.random() * (task_number-1))
 		target = None
 		capacity = self.solver.capacity
+		depot = self.solver.depot
 		new_route = Route(list())
 		cost_reduce = 0
 		for path in route.paths:
-			rand -= len(path)
-			if rand <= 0:
-				pre_cost = path.get_cost()
+			rand -= len(path.tasks)
+			# print(len(path.tasks))
+			# print(rand)
+			if rand < 0:
+				pre_cost = path.get_cost(self.solver)
 				target = path.tasks[rand]
-				path.remove_task()
-				aft_cost = path.get_cost()
+				path.remove_task(target)
+				aft_cost = path.get_cost(self.solver)
 				cost_reduce = pre_cost - aft_cost
 				break
+
 		assert target is not None
 		flip_target = tuple([target[1], target[0]])
 		demand = self.solver.graph.get_edge_attr(target[0], target[1], 'demand')
+		weight = self.solver.graph.get_edge_attr(target[0], target[1], 'weight')
+
+		flag = True  # 只插一次并用来判断是否有插入操作
 		for path in route.paths:
-			new_path = path
-			pre_cost = path.get_cost(self.solver)
-			# aft_cost =
-			if path.get_cap(self.solver) + demand < capacity:
+			new_path = copy.deepcopy(path)
+			current_pos = depot
+			if path.get_cap(self.solver) + demand < capacity and flag:
 				tasks = path.tasks
 				for i in range(len(tasks)):
-					pass
-
-		# for
-		pass
+					task = tasks[i]
+					orig_cost = self.solver.graph.distance_array[current_pos, task[0]]
+					aft_cost_t = self.solver.graph.distance_array[current_pos, target[0]] + weight +\
+						self.solver.graph.distance_array[target[1], task[0]]
+					aft_cost_f = self.solver.graph.distance_array[current_pos, target[1]] + weight +\
+						self.solver.graph.distance_array[target[0], task[0]]
+					aft_cost = min(aft_cost_t, aft_cost_f)
+					if aft_cost - orig_cost >= cost_reduce:
+						continue
+					else:
+						if aft_cost_t < aft_cost_f:
+							tasks.insert(i, target)
+						else:
+							tasks.insert(i, flip_target)
+						# print('insertion success')
+						flag = False
+						break
+				new_path = Path(tasks)
+			new_route.add_path(new_path)
+		if not flag:
+			return new_route
+		else:
+			return route_origin
 
 	# TODO: double insertion
 	def double_insertion(self, route):

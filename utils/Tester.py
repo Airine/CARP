@@ -58,7 +58,8 @@ def test2():
 	result1 = np.zeros(6, dtype=int)
 	result2 = np.zeros(6, dtype=int)
 	for i in range(10000):
-		ran = Tester.weighted_choice([9/5, 9/3, 9/3, 9/10, 9/4, 9/5])
+		ran = Tester.weighted_choice([1/5, 1/3, 1/3, 1/10, 1/4, 1/5])
+		# ran = Tester.weighted_choice([1000 / 5, 1000 / 3, 1000 / 3, 1000 / 10, 1000 / 4, 1000 / 5])
 		result1[ran[0]] += 1
 		result2[ran[1]] += 1
 	print(result1)
